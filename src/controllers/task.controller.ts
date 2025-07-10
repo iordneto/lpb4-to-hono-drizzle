@@ -1,10 +1,11 @@
+import {authenticate} from '@loopback/authentication';
+import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
   Filter,
   FilterExcludingWhere,
   repository,
-  Where,
 } from '@loopback/repository';
 import {
   del,
@@ -17,17 +18,21 @@ import {
   requestBody,
   response,
 } from '@loopback/rest';
+import {SecurityBindings, UserProfile} from '@loopback/security';
 import {Task} from '../models';
 import {TaskRepository} from '../repositories';
 
+@authenticate('jwt')
 export class TaskController {
   constructor(
     @repository(TaskRepository)
     public taskRepository: TaskRepository,
+    @inject(SecurityBindings.USER)
+    public currentUser: UserProfile,
   ) {}
 
   @post('/tasks')
-  @response(201, {
+  @response(200, {
     description: 'Task model instance',
     content: {'application/json': {schema: getModelSchemaRef(Task)}},
   })
@@ -44,11 +49,9 @@ export class TaskController {
     })
     task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<Task> {
-    // TODO: Get userId from JWT token
-    const userId = '1'; // Placeholder
     return this.taskRepository.create({
       ...task,
-      userId,
+      userId: this.currentUser.id,
     });
   }
 
@@ -57,8 +60,8 @@ export class TaskController {
     description: 'Task model count',
     content: {'application/json': {schema: CountSchema}},
   })
-  async count(@param.where(Task) where?: Where<Task>): Promise<Count> {
-    return this.taskRepository.count(where);
+  async count(): Promise<Count> {
+    return this.taskRepository.count({userId: this.currentUser.id});
   }
 
   @get('/tasks')
@@ -74,8 +77,15 @@ export class TaskController {
     },
   })
   async find(@param.filter(Task) filter?: Filter<Task>): Promise<Task[]> {
-    // TODO: Filter by userId from JWT token
-    return this.taskRepository.find(filter);
+    // Filter tasks by current user
+    const userFilter = {
+      ...filter,
+      where: {
+        ...filter?.where,
+        userId: this.currentUser.id,
+      },
+    };
+    return this.taskRepository.find(userFilter);
   }
 
   @get('/tasks/{id}')
@@ -92,7 +102,12 @@ export class TaskController {
     @param.filter(Task, {exclude: 'where'}) filter?: FilterExcludingWhere<Task>,
   ): Promise<Task> {
     const task = await this.taskRepository.findById(id, filter);
-    // TODO: Verify if task belongs to the logged user
+
+    // Verify if task belongs to the current user
+    if (task.userId !== this.currentUser.id) {
+      throw new Error('Task not found');
+    }
+
     return task;
   }
 
@@ -111,7 +126,12 @@ export class TaskController {
     })
     task: Partial<Task>,
   ): Promise<void> {
-    // TODO: Verify if task belongs to the logged user
+    // Verify if task belongs to the current user
+    const existingTask = await this.taskRepository.findById(id);
+    if (existingTask.userId !== this.currentUser.id) {
+      throw new Error('Task not found');
+    }
+
     await this.taskRepository.updateById(id, {
       ...task,
       updatedAt: new Date(),
@@ -126,8 +146,16 @@ export class TaskController {
     @param.path.string('id') id: string,
     @requestBody() task: Task,
   ): Promise<void> {
-    // TODO: Verify if task belongs to the logged user
-    await this.taskRepository.replaceById(id, task);
+    // Verify if task belongs to the current user
+    const existingTask = await this.taskRepository.findById(id);
+    if (existingTask.userId !== this.currentUser.id) {
+      throw new Error('Task not found');
+    }
+
+    await this.taskRepository.replaceById(id, {
+      ...task,
+      userId: this.currentUser.id, // Ensure userId is preserved
+    });
   }
 
   @del('/tasks/{id}')
@@ -135,7 +163,12 @@ export class TaskController {
     description: 'Task DELETE success',
   })
   async deleteById(@param.path.string('id') id: string): Promise<void> {
-    // TODO: Verify if task belongs to the logged user
+    // Verify if task belongs to the current user
+    const existingTask = await this.taskRepository.findById(id);
+    if (existingTask.userId !== this.currentUser.id) {
+      throw new Error('Task not found');
+    }
+
     await this.taskRepository.deleteById(id);
   }
 
@@ -144,7 +177,12 @@ export class TaskController {
     description: 'Mark task as completed',
   })
   async markAsCompleted(@param.path.string('id') id: string): Promise<void> {
-    // TODO: Verify if task belongs to the logged user
+    // Verify if task belongs to the current user
+    const existingTask = await this.taskRepository.findById(id);
+    if (existingTask.userId !== this.currentUser.id) {
+      throw new Error('Task not found');
+    }
+
     await this.taskRepository.updateById(id, {
       completed: true,
       updatedAt: new Date(),
@@ -156,7 +194,12 @@ export class TaskController {
     description: 'Mark task as uncompleted',
   })
   async markAsUncompleted(@param.path.string('id') id: string): Promise<void> {
-    // TODO: Verify if task belongs to the logged user
+    // Verify if task belongs to the current user
+    const existingTask = await this.taskRepository.findById(id);
+    if (existingTask.userId !== this.currentUser.id) {
+      throw new Error('Task not found');
+    }
+
     await this.taskRepository.updateById(id, {
       completed: false,
       updatedAt: new Date(),

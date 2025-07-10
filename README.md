@@ -169,6 +169,136 @@ curl -X PATCH http://localhost:3000/tasks/1/complete \
 - **[bcryptjs](https://www.npmjs.com/package/bcryptjs)** - Password hashing
 - **[OpenAPI](https://swagger.io/specification/)** - API documentation
 
+## Testing
+
+The application includes a comprehensive suite of integration tests that leverage LoopBack 4's testing capabilities with an in-memory database.
+
+### Test Structure
+
+```
+src/__tests__/
+├── acceptance/                    # Integration tests
+│   ├── auth.controller.simple.ts  # Authentication tests
+│   ├── test-application.ts        # Test application with JWT middleware
+│   ├── test-helper.ts             # Test utilities and data generators
+│   └── test-db.datasource.ts      # In-memory database for tests
+└── README.md                      # Testing documentation
+```
+
+### Test Features
+
+✅ **JWT Authentication Tests**
+
+- User registration and login flows
+- Token validation and security
+- Invalid credentials rejection
+- Duplicate email validation
+
+✅ **Task Management Tests**
+
+- Complete CRUD operations
+- Authentication-protected endpoints
+- User isolation (users only see their own tasks)
+- Task completion status management
+
+✅ **Integration Testing Benefits**
+
+- **In-memory database**: Fast, isolated tests using LoopBack's memory connector
+- **Clean state**: Database reset between each test for consistency
+- **Real HTTP requests**: End-to-end API testing with supertest
+- **JWT middleware**: Custom authentication middleware for test environment
+
+### Running Tests
+
+```bash
+# Run all tests
+yarn test
+
+# Run specific test groups
+yarn test --grep "AuthController"
+yarn test --grep "TaskController"
+
+# Run tests with TAP reporter
+yarn test --reporter=tap
+
+# Run specific test
+yarn test --grep "successfully creates a task"
+```
+
+### Test Coverage
+
+**19 tests covering all functionality:**
+
+**Authentication (6 tests)**
+
+- ✅ User registration with validation
+- ✅ Login with JWT token generation
+- ✅ Invalid credentials rejection
+- ✅ Email uniqueness validation
+- ✅ JWT token format validation
+
+**Task Management (13 tests)**
+
+- ✅ Task creation with authentication
+- ✅ Task listing and retrieval
+- ✅ Complete CRUD operations (Create, Read, Update, Delete)
+- ✅ Task completion/uncompletion
+- ✅ User task isolation
+- ✅ Authentication requirement enforcement
+- ✅ Field validation
+- ✅ Task counting
+
+### Test Architecture
+
+**Custom Test Application**
+
+```typescript
+// TestApplication with JWT middleware
+export class TestApplication extends LoopbackPrismaToHonoDrizzleApplication {
+  // Custom JWT processing for tests
+  // Automatic 401 responses for protected endpoints
+  // In-memory database binding
+}
+```
+
+**Test Utilities**
+
+```typescript
+// Data generators
+givenUserData(); // Creates test user data
+givenTaskData(); // Creates test task data
+givenLoggedInUser(); // Registers user and returns JWT token
+
+// Database management
+cleanupDatabase(); // Resets database between tests
+setupApplication(); // Initializes test app with clean state
+```
+
+**Key Testing Benefits**
+
+🚀 **Fast Execution**: In-memory database ensures quick test runs
+🔒 **Security Testing**: Validates authentication and authorization
+🎯 **Business Logic**: Tests complete user workflows
+🧪 **Isolation**: Each test runs in clean environment
+📊 **Comprehensive**: Covers all API endpoints and edge cases
+
+### Example Test Execution
+
+```bash
+$ yarn test --reporter=tap
+
+ok 1 AuthController POST /auth/register successfully registers a new user
+ok 2 AuthController POST /auth/register rejects registration with duplicate email
+ok 3 AuthController POST /auth/login successfully logs in with valid credentials
+ok 4 TaskController POST /tasks successfully creates a task with authentication
+ok 5 TaskController POST /tasks rejects task creation without authentication
+ok 6 TaskController GET /tasks returns user tasks
+ok 7 TaskController Task CRUD operations performs complete CRUD cycle
+# tests 19
+# pass 19
+# fail 0
+```
+
 ## Data Structure
 
 ### User

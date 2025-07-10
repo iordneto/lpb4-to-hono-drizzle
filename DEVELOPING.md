@@ -68,17 +68,230 @@ yarn openapi-spec      # Generate OpenAPI specification
 
 ## Testing
 
-Run tests with:
+This project includes comprehensive integration tests using LoopBack 4's testing framework with an in-memory database for fast, isolated testing.
+
+### Test Architecture
+
+**Test Application (`TestApplication`)**
+
+```typescript
+export class TestApplication extends LoopbackPrismaToHonoDrizzleApplication {
+  constructor(options: ApplicationConfig = {}) {
+    super(options);
+
+    // Custom JWT middleware for tests
+    this.middleware((ctx, next) => {
+      // Handles JWT authentication in test environment
+      // Returns 401 for protected endpoints without valid tokens
+      // Binds UserProfile to context for authenticated requests
+    });
+  }
+}
+```
+
+**In-Memory Database (`TestDbDataSource`)**
+
+```typescript
+const config = {
+  name: 'testdb',
+  connector: 'memory',
+  localStorage: '',
+  file: false, // Don't persist to file in tests
+};
+```
+
+### Test Structure
+
+```
+src/__tests__/
+├── acceptance/
+│   ├── test-application.ts     # Custom test app with JWT middleware
+│   ├── test-helper.ts          # Test utilities and data generators
+│   ├── auth.controller.simple.ts  # Authentication integration tests
+│   └── ping.controller.acceptance.ts  # Existing LoopBack tests
+└── datasources/
+    └── test-db.datasource.ts   # In-memory database configuration
+```
+
+### Running Tests
 
 ```bash
+# Run all tests
 yarn test
+
+# Run with specific reporter
+yarn test --reporter=tap
+yarn test --reporter=json
+yarn test --reporter=spec
+
+# Run specific test files
+yarn test --grep "AuthController"
+yarn test --grep "TaskController"
+
+# Run specific test cases
+yarn test --grep "successfully creates a task"
+yarn test --grep "rejects task creation without authentication"
+
+# Debug mode (useful for development)
+yarn test --inspect-brk
 ```
+
+### Test Utilities
+
+**Data Generators**
+
+```typescript
+// Generate test user data with unique emails
+const userData = givenUserData({
+  email: 'custom@test.com',
+  name: 'Custom User',
+});
+
+// Generate test task data
+const taskData = givenTaskData({
+  title: 'Custom Task',
+  completed: true,
+});
+
+// Create authenticated user and get JWT token
+const {user, token} = await givenLoggedInUser(client, userData);
+
+// Generate authorization headers
+const headers = getAuthHeaders(token);
+```
+
+**Database Management**
+
+```typescript
+// Clean database between tests (called in beforeEach)
+await cleanupDatabase(app);
+
+// Setup test application with clean state
+const {app, client} = await setupApplication();
+```
+
+### Test Coverage Areas
+
+**Authentication Tests (`auth.controller.simple.ts`)**
+
+- User registration with validation
+- Login with JWT token generation
+- Email uniqueness validation
+- Invalid credentials handling
+- JWT token format validation
+
+**Task Management Tests**
+
+- CRUD operations with authentication
+- User isolation (tasks are user-specific)
+- Authentication requirement enforcement
+- Task completion status management
+- Field validation and error handling
+
+### Test Development Guidelines
+
+**1. Test Isolation**
+
+```typescript
+beforeEach(async () => {
+  await cleanupDatabase(app); // Clean state for each test
+});
+```
+
+**2. Unique Test Data**
+
+```typescript
+// Use unique emails to avoid conflicts
+const userData = givenUserData({
+  email: `test-${Date.now()}@example.com`,
+});
+```
+
+**3. Authentication Patterns**
+
+```typescript
+// Standard pattern for authenticated requests
+const {token} = await givenLoggedInUser(client);
+const res = await client
+  .post('/tasks')
+  .set(getAuthHeaders(token))
+  .send(taskData)
+  .expect(200);
+```
+
+**4. Order-Independent Assertions**
+
+```typescript
+// Don't assume order of results
+const titles = res.body.map(task => task.title);
+expect(titles).to.containEql('Task 1');
+expect(titles).to.containEql('Task 2');
+```
+
+### Debugging Tests
+
+**Run specific failing test:**
+
+```bash
+yarn test --grep "specific failing test name"
+```
+
+**Add debug logs in tests:**
+
+```typescript
+console.log('Response:', res.body);
+console.log('Headers:', res.headers);
+```
+
+**Inspect database state:**
+
+```typescript
+// In test, before cleanup
+const tasks = await app.get('repositories.TaskRepository').find();
+console.log('Current tasks:', tasks);
+```
+
+### Adding New Tests
+
+**1. Create test file:**
+
+```typescript
+// src/__tests__/acceptance/new-feature.acceptance.ts
+describe('NewFeature (Integration)', () => {
+  let app: TestApplication;
+  let client: Client;
+
+  before('setupApplication', async () => {
+    ({app, client} = await setupApplication());
+  });
+
+  after(async () => {
+    await app.stop();
+  });
+
+  beforeEach(async () => {
+    await cleanupDatabase(app);
+  });
+
+  // Your tests here
+});
+```
+
+**2. Use existing patterns:**
+
+- Use `givenLoggedInUser()` for authenticated tests
+- Use `cleanupDatabase()` for test isolation
+- Follow naming convention: `feature.acceptance.ts`
+
+### Continuous Testing
 
 For continuous testing during development:
 
 ```bash
 yarn test:dev
 ```
+
+This will watch for file changes and re-run tests automatically.
 
 ## Code Style
 
