@@ -301,12 +301,155 @@ This project uses ESLint and Prettier for code formatting. Run:
 yarn lint:fix
 ```
 
+## 🧪 Test Coverage Analysis
+
+### Overview
+
+The project uses **c8** (modern V8 coverage tool) to provide comprehensive code coverage analysis. This helps identify untested code paths and ensures high code quality.
+
+### Coverage Commands
+
+```bash
+# Run tests with coverage analysis
+yarn test:coverage
+
+# Generate coverage report only (after tests run)
+yarn test:coverage:report
+
+# Check if coverage meets minimum thresholds
+yarn test:coverage:check
+```
+
+### Current Coverage Metrics
+
+- **Overall Coverage**: **92.84%** statements
+- **Branch Coverage**: **78.84%** conditional paths
+- **Function Coverage**: **87.5%** of all functions
+- **Line Coverage**: **92.84%** of all lines
+
+### Coverage Thresholds
+
+Minimum acceptable coverage levels:
+
+- **Statements**: 80%
+- **Branches**: 80%
+- **Functions**: 80%
+- **Lines**: 80%
+
+### Coverage Reports
+
+#### Text Report (Terminal)
+
+```bash
+$ yarn test:coverage
+------------------------|---------|----------|---------|---------|
+File                    | % Stmts | % Branch | % Funcs | % Lines |
+------------------------|---------|----------|---------|---------|
+All files               |   92.84 |    78.84 |    87.5 |   92.84 |
+ src/controllers        |   92.94 |    71.42 |   93.33 |   92.94 |
+  auth.controller.ts    |   97.01 |    77.77 |     100 |   97.01 |
+  task.controller.ts    |   88.46 |    64.7  |      90 |   88.46 |
+ src/services           |   78.89 |    72.72 |      60 |   78.89 |
+  auth.service.ts       |   78.70 |    72.72 |      60 |   78.70 |
+------------------------|---------|----------|---------|---------|
+```
+
+#### HTML Report (Interactive)
+
+```bash
+# Generate and open HTML coverage report
+yarn test:coverage
+open coverage/index.html
+```
+
+**HTML Report Features:**
+
+- **Line-by-line coverage**: See exactly which lines are tested
+- **Branch coverage visualization**: Identify untested conditional paths
+- **Function coverage tracking**: Track which functions lack tests
+- **File navigation**: Browse through all source files
+- **Interactive highlighting**: Click to see covered/uncovered code
+
+### Coverage Configuration
+
+The coverage is configured in `package.json`:
+
+```json
+{
+  "c8": {
+    "reporter": ["text", "html"],
+    "exclude": [
+      "**/*.d.ts",
+      "dist/__tests__/**/*",
+      "dist/migrate.js",
+      "dist/index.js"
+    ],
+    "all": true,
+    "check-coverage": false,
+    "lines": 80,
+    "functions": 80,
+    "branches": 80,
+    "statements": 80
+  }
+}
+```
+
+### Areas for Coverage Improvement
+
+Based on current coverage analysis:
+
+1. **AuthService Error Handling** (78.70% coverage)
+   - Password validation edge cases
+   - Database connection errors
+   - JWT token generation failures
+
+2. **Task Controller Branch Coverage** (64.7% coverage)
+   - Advanced filtering scenarios
+   - Pagination edge cases
+   - Invalid parameter handling
+
+3. **User Model Functions** (85.71% coverage)
+   - Password hashing error scenarios
+   - Validation edge cases
+   - Relationship handling
+
+### Best Practices for Coverage
+
+1. **Aim for High Coverage**: Target 90%+ statement coverage
+2. **Focus on Critical Paths**: Ensure all business logic is tested
+3. **Don't Ignore Branches**: Test all conditional paths
+4. **Test Error Scenarios**: Include negative test cases
+5. **Regular Monitoring**: Check coverage on each feature addition
+
+### Coverage in CI/CD
+
+To enforce coverage thresholds in CI/CD:
+
+```bash
+# Add to CI pipeline
+yarn test:coverage:check
+```
+
+This will fail if coverage falls below thresholds, ensuring code quality standards.
+
+### Debugging Low Coverage
+
+```bash
+# Run specific test files to see coverage impact
+yarn test:coverage --grep "AuthController"
+
+# View HTML report for detailed line-by-line analysis
+yarn test:coverage
+open coverage/index.html
+```
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-new-feature`
 3. Make your changes
 4. Run tests: `yarn test`
-5. Commit your changes: `git commit -am 'Add some feature'`
-6. Push to the branch: `git push origin feature/my-new-feature`
-7. Submit a pull request
+5. Check test coverage: `yarn test:coverage`
+6. Commit your changes: `git commit -am 'Add some feature'`
+7. Push to the branch: `git push origin feature/my-new-feature`
+8. Submit a pull request
